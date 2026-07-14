@@ -1,0 +1,28 @@
+# Virtual environment
+.venv/
+
+# Memory store (personal data)
+memory_store/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment variables (never commit your API keys)
+.env
+*.env
+
+# Model cache
+*.onnx
+*.bin
+
+# Logs
+*.log
+
+# VS Code
+.vscode/
+
+# Windows
+Thumbs.db
+Desktop.ini

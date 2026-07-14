@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TARA — AI Assistant</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+
+  :root {
+    --primary: #00d4ff;
+    --primary-dim: #0088aa;
+    --accent: #ff6b35;
+    --green: #00ff88;
+    --red: #ff3366;
+    --bg: #020810;
+    --bg2: #040f1a;
+    --bg3: #061525;
+    --panel: rgba(0,212,255,0.04);
+    --border: rgba(0,212,255,0.15);
+    --border-bright: rgba(0,212,255,0.5);
+    --text: #c8e8f0;
+    --text-dim: #4a7a8a;
+    --glow: 0 0 20px rgba(0,212,255,0.3);
+    --glow-strong: 0 0 40px rgba(0,212,255,0.6);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    height: 100vh;
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: 60px 1fr 120px;
+    grid-template-columns: 280px 1fr 280px;
+    grid-template-areas:
+      "header header header"
+      "left   center right"
+      "footer footer footer";
+  }
+
+  /* ── HEADER ── */
+  header {
+    grid-area: header;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(0,0,0,0.4);
+    backdrop-filter: blur(10px);
+  }
+
+  .logo {
+    font-family: 'Orbitron', monospace;
+    font-weight: 900;
+    font-size: 22px;
+    color: var(--primary);
+    text-shadow: var(--glow);
+    letter-spacing: 6px;
+  }
+
+  .logo span { color: var(--accent); }
+
+  .header-status {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+  }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse-dot 2s infinite;
+  }
+
+  .status-dot.offline { background: var(--red); box-shadow: 0 0 8px var(--red); animation: none; }
+
+  #clock { font-family: 'Orbitron', monospace; font-size: 14px; color: var(--primary); }
+
+  /* ── PANELS ── */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    margin: 12px;
+    border-radius: 4px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .panel-header {
+    padding: 10px 14px;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--primary);
+    border-bottom: 1px solid var(--border);
+    background: rgba(0,212,255,0.06);
+    text-transform: uppercase;
+  }
+
+  .panel-body { padding: 12px; flex: 1; overflow-y: auto; }
+  .panel-body::-webkit-scrollbar { width: 3px; }
+  .panel-body::-webkit-scrollbar-track { background: transparent; }
+  .panel-body::-webkit-scrollbar-thumb { background: var(--primary-dim); border-radius: 2px; }
+
+  /* ── LEFT PANEL ── */
+  #left { grid-area: left; }
+
+  .fact-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(0,212,255,0.06);
+    font-size: 11px;
+  }
+  .fact-key { color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
+  .fact-val { color: var(--primary); }
+
+  .task-item {
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    border: 1px solid rgba(0,212,255,0.1);
+    border-radius: 3px;
+    background: rgba(0,212,255,0.03);
+    font-size: 11px;
+    line-height: 1.6;
+  }
+  .task-title { color: var(--text); }
+  .task-due { color: var(--accent); font-size: 10px; margin-top: 2px; }
+  .no-data { color: var(--text-dim); font-size: 11px; font-style: italic; padding: 8px 0; }
+
+  /* ── CENTER ── */
+  #center {
+    grid-area: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px;
+  }
+
+  /* Arc reactor */
+  .reactor-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    flex: 1;
+    justify-content: center;
+  }
+
+  .reactor {
+    position: relative;
+    width: 180px;
+    height: 180px;
+  }
+
+  .reactor-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    animation: spin 8s linear infinite;
+  }
+
+  .ring-1 {
+    inset: 0;
+    border-top-color: var(--primary);
+    border-right-color: var(--primary);
+    box-shadow: 0 0 15px var(--primary);
+  }
+  .ring-2 {
+    inset: 15px;
+    border-bottom-color: rgba(0,212,255,0.5);
+    border-left-color: rgba(0,212,255,0.5);
+    animation-duration: 5s;
+    animation-direction: reverse;
+  }
+  .ring-3 {
+    inset: 30px;
+    border-top-color: rgba(0,212,255,0.3);
+    animation-duration: 3s;
+  }
+
+  .reactor-core {
+    position: absolute;
+    inset: 50px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,212,255,0.8) 0%, rgba(0,100,150,0.4) 50%, transparent 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Orbitron', monospace;
+    font-size: 9px;
+    color: var(--primary);
+    letter-spacing: 1px;
+    text-align: center;
+  }
+
+  .reactor-core.listening {
+    background: radial-gradient(circle, rgba(0,255,136,0.8) 0%, rgba(0,100,60,0.4) 50%, transparent 100%);
+    box-shadow: 0 0 40px rgba(0,255,136,0.6);
+  }
+  .reactor-core.thinking {
+    background: radial-gradient(circle, rgba(255,107,53,0.8) 0%, rgba(100,40,0,0.4) 50%, transparent 100%);
+    box-shadow: 0 0 40px rgba(255,107,53,0.6);
+    animation: pulse-core 0.8s ease-in-out infinite;
+  }
+  .reactor-core.speaking {
+    background: radial-gradient(circle, rgba(0,212,255,1) 0%, rgba(0,100,150,0.6) 50%, transparent 100%);
+    box-shadow: 0 0 60px rgba(0,212,255,0.8);
+    animation: pulse-core 0.4s ease-in-out infinite;
+  }
+  .reactor-core.sleeping {
+    background: radial-gradient(circle, rgba(50,50,80,0.6) 0%, transparent 100%);
+    box-shadow: none;
+  }
+
+  /* State label */
+  #state-label {
+    font-family: 'Orbitron', monospace;
+    font-size: 13px;
+    letter-spacing: 5px;
+    color: var(--primary);
+    text-shadow: var(--glow);
+    text-transform: uppercase;
+    min-height: 20px;
+    transition: color 0.3s;
+  }
+
+  #state-label.listening { color: var(--green); text-shadow: 0 0 20px var(--green); }
+  #state-label.thinking  { color: var(--accent); text-shadow: 0 0 20px var(--accent); }
+  #state-label.speaking  { color: var(--primary); }
+  #state-label.sleeping  { color: var(--text-dim); text-shadow: none; }
+
+  /* Waveform */
+  #waveform {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    height: 40px;
+    opacity: 0.3;
+    transition: opacity 0.3s;
+  }
+  #waveform.active { opacity: 1; }
+  .wave-bar {
+    width: 3px;
+    background: var(--primary);
+    border-radius: 2px;
+    animation: wave 1.2s ease-in-out infinite;
+    min-height: 4px;
+  }
+  .wave-bar:nth-child(2) { animation-delay: 0.1s; }
+  .wave-bar:nth-child(3) { animation-delay: 0.2s; }
+  .wave-bar:nth-child(4) { animation-delay: 0.3s; }
+  .wave-bar:nth-child(5) { animation-delay: 0.2s; }
+  .wave-bar:nth-child(6) { animation-delay: 0.1s; }
+  .wave-bar:nth-child(7) { animation-delay: 0.0s; }
+
+  /* Conversation */
+  #conversation {
+    width: 100%;
+    max-height: 220px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  #conversation::-webkit-scrollbar { width: 3px; }
+  #conversation::-webkit-scrollbar-thumb { background: var(--primary-dim); }
+
+  .msg {
+    padding: 10px 14px;
+    border-radius: 3px;
+    font-size: 12px;
+    line-height: 1.6;
+    max-width: 90%;
+    animation: fadeIn 0.3s ease;
+  }
+  .msg.user {
+    background: rgba(255,107,53,0.1);
+    border: 1px solid rgba(255,107,53,0.3);
+    align-self: flex-end;
+    color: #ffaa88;
+  }
+  .msg.user::before {
+    content: "BOSS › ";
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    display: block;
+    margin-bottom: 4px;
+  }
+  .msg.tara {
+    background: rgba(0,212,255,0.06);
+    border: 1px solid var(--border);
+    align-self: flex-start;
+    color: var(--text);
+  }
+  .msg.tara::before {
+    content: "TARA › ";
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--primary);
+    display: block;
+    margin-bottom: 4px;
+  }
+  .msg-time {
+    font-size: 9px;
+    color: var(--text-dim);
+    margin-top: 4px;
+    text-align: right;
+  }
+
+  /* ── RIGHT PANEL ── */
+  #right { grid-area: right; }
+
+  .sys-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 7px 0;
+    border-bottom: 1px solid rgba(0,212,255,0.06);
+    font-size: 11px;
+  }
+  .sys-label { color: var(--text-dim); letter-spacing: 1px; }
+  .sys-val { color: var(--green); }
+  .sys-val.warn { color: var(--accent); }
+  .sys-val.err  { color: var(--red); }
+
+  .activity-log {
+    font-size: 10px;
+    color: var(--text-dim);
+    line-height: 2;
+  }
+  .activity-log .entry { 
+    border-bottom: 1px solid rgba(0,212,255,0.04);
+    padding: 2px 0;
+  }
+  .activity-log .entry .ts { color: rgba(0,212,255,0.3); margin-right: 6px; }
+
+  /* ── FOOTER ── */
+  footer {
+    grid-area: footer;
+    border-top: 1px solid var(--border);
+    background: rgba(0,0,0,0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 40px;
+    padding: 0 24px;
+  }
+
+  .footer-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .footer-stat-label {
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+  .footer-stat-value {
+    font-family: 'Orbitron', monospace;
+    font-size: 13px;
+    color: var(--primary);
+  }
+
+  .footer-divider {
+    width: 1px;
+    height: 40px;
+    background: var(--border);
+  }
+
+  /* ── CORNER DECORATIONS ── */
+  .corner-tl, .corner-tr, .corner-bl, .corner-br {
+    position: fixed;
+    width: 20px; height: 20px;
+    pointer-events: none;
+  }
+  .corner-tl { top: 8px; left: 8px; border-top: 2px solid var(--primary); border-left: 2px solid var(--primary); }
+  .corner-tr { top: 8px; right: 8px; border-top: 2px solid var(--primary); border-right: 2px solid var(--primary); }
+  .corner-bl { bottom: 8px; left: 8px; border-bottom: 2px solid var(--primary); border-left: 2px solid var(--primary); }
+  .corner-br { bottom: 8px; right: 8px; border-bottom: 2px solid var(--primary); border-right: 2px solid var(--primary); }
+
+  /* ── SCAN LINE EFFECT ── */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.03) 2px,
+      rgba(0,0,0,0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes pulse-dot { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+  @keyframes pulse-core { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+  @keyframes wave {
+    0%,100% { height: 8px; }
+    50% { height: 32px; }
+  }
+  @keyframes fadeIn { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform:none; } }
+  @keyframes boot-flash {
+    0%   { opacity: 0; }
+    20%  { opacity: 1; }
+    80%  { opacity: 1; }
+    100% { opacity: 0; display: none; }
+  }
+
+  /* ── BOOT SCREEN ── */
+  #boot {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    animation: boot-flash 3s ease forwards;
+    pointer-events: none;
+  }
+  .boot-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 48px;
+    font-weight: 900;
+    color: var(--primary);
+    text-shadow: var(--glow-strong);
+    letter-spacing: 12px;
+  }
+  .boot-sub {
+    font-size: 12px;
+    color: var(--text-dim);
+    letter-spacing: 8px;
+  }
+  .boot-bar {
+    width: 300px;
+    height: 2px;
+    background: var(--border);
+    border-radius: 1px;
+    overflow: hidden;
+  }
+  .boot-fill {
+    height: 100%;
+    background: var(--primary);
+    box-shadow: var(--glow);
+    animation: boot-load 2.5s ease forwards;
+  }
+  @keyframes boot-load { from { width: 0; } to { width: 100%; } }
+  .boot-lines {
+    font-size: 10px;
+    color: rgba(0,212,255,0.4);
+    letter-spacing: 2px;
+    text-align: center;
+    line-height: 2;
+  }
+
+  /* Connection status overlay */
+  #conn-status {
+    position: fixed;
+    bottom: 130px;
+    right: 20px;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--red);
+    display: none;
+  }
+  #conn-status.show { display: block; }
+</style>
+</head>
+<body>
+
+<!-- Boot screen -->
+<div id="boot">
+  <div class="boot-title">T A R A</div>
+  <div class="boot-sub">TACTICAL AI RESPONSE AGENT</div>
+  <div class="boot-bar"><div class="boot-fill"></div></div>
+  <div class="boot-lines">
+    INITIALISING NEURAL CORE...<br>
+    LOADING SUBSYSTEMS...<br>
+    ESTABLISHING SECURE LINK...
+  </div>
+</div>
+
+<!-- Corner decorations -->
+<div class="corner-tl"></div>
+<div class="corner-tr"></div>
+<div class="corner-bl"></div>
+<div class="corner-br"></div>
+
+<!-- Connection status -->
+<div id="conn-status">⚠ OFFLINE</div>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">T<span>·</span>A<span>·</span>R<span>·</span>A</div>
+  <div class="header-status">
+    <div class="status-dot" id="online-dot"></div>
+    <span id="status-text">ONLINE</span>
+    <div class="footer-divider" style="height:20px"></div>
+    <span id="clock">--:--:--</span>
+    <div class="footer-divider" style="height:20px"></div>
+    <span id="date-str">---</span>
+  </div>
+</header>
+
+<!-- LEFT: Memory -->
+<div class="panel" id="left">
+  <div class="panel-header">◈ Memory Core</div>
+  <div class="panel-body">
+    <div style="font-size:10px;letter-spacing:2px;color:var(--text-dim);margin-bottom:8px;">USER PROFILE</div>
+    <div id="facts-list"><div class="no-data">No data stored yet.</div></div>
+    <div style="font-size:10px;letter-spacing:2px;color:var(--text-dim);margin:12px 0 8px;">ACTIVE TASKS</div>
+    <div id="tasks-list"><div class="no-data">No pending tasks.</div></div>
+  </div>
+</div>
+
+<!-- CENTER: Main -->
+<div id="center">
+  <div class="reactor-container">
+
+    <!-- Arc reactor -->
+    <div class="reactor">
+      <div class="reactor-ring ring-1"></div>
+      <div class="reactor-ring ring-2"></div>
+      <div class="reactor-ring ring-3"></div>
+      <div class="reactor-core sleeping" id="reactor-core">TARA</div>
+    </div>
+
+    <div id="state-label" class="sleeping">SLEEPING</div>
+
+    <!-- Waveform -->
+    <div id="waveform">
+      <div class="wave-bar" style="height:8px"></div>
+      <div class="wave-bar" style="height:16px"></div>
+      <div class="wave-bar" style="height:24px"></div>
+      <div class="wave-bar" style="height:32px"></div>
+      <div class="wave-bar" style="height:24px"></div>
+      <div class="wave-bar" style="height:16px"></div>
+      <div class="wave-bar" style="height:8px"></div>
+    </div>
+
+    <!-- Conversation -->
+    <div id="conversation"></div>
+  </div>
+</div>
+
+<!-- RIGHT: System -->
+<div class="panel" id="right">
+  <div class="panel-header">◈ System Status</div>
+  <div class="panel-body">
+    <div id="sys-stats">
+      <div class="sys-row"><span class="sys-label">OLLAMA</span><span class="sys-val" id="s-ollama">CHECKING</span></div>
+      <div class="sys-row"><span class="sys-label">MEMORY</span><span class="sys-val" id="s-memory">CHECKING</span></div>
+      <div class="sys-row"><span class="sys-label">KNOWLEDGE</span><span class="sys-val" id="s-know">ACTIVE</span></div>
+      <div class="sys-row"><span class="sys-label">EXECUTION</span><span class="sys-val" id="s-exec">ACTIVE</span></div>
+      <div class="sys-row"><span class="sys-label">WAKE WORD</span><span class="sys-val" id="s-wake">ARMED</span></div>
+      <div class="sys-row"><span class="sys-label">WEBSOCKET</span><span class="sys-val err" id="s-ws">CONNECTING</span></div>
+    </div>
+    <div style="font-size:10px;letter-spacing:2px;color:var(--text-dim);margin:14px 0 8px;">ACTIVITY LOG</div>
+    <div class="activity-log" id="activity-log"></div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-stat">
+    <div class="footer-stat-label">State</div>
+    <div class="footer-stat-value" id="f-state">SLEEPING</div>
+  </div>
+  <div class="footer-divider"></div>
+  <div class="footer-stat">
+    <div class="footer-stat-label">Messages</div>
+    <div class="footer-stat-value" id="f-msgs">0</div>
+  </div>
+  <div class="footer-divider"></div>
+  <div class="footer-stat">
+    <div class="footer-stat-label">Memory Facts</div>
+    <div class="footer-stat-value" id="f-facts">0</div>
+  </div>
+  <div class="footer-divider"></div>
+  <div class="footer-stat">
+    <div class="footer-stat-label">Tasks</div>
+    <div class="footer-stat-value" id="f-tasks">0</div>
+  </div>
+  <div class="footer-divider"></div>
+  <div class="footer-stat">
+    <div class="footer-stat-label">Uptime</div>
+    <div class="footer-stat-value" id="f-uptime">00:00</div>
+  </div>
+</footer>
+
+<script>
+// ── State ──────────────────────────────────────────────────────
+let ws = null;
+let msgCount = 0;
+let startTime = Date.now();
+let reconnectTimer = null;
+let currentState = 'sleeping';
+
+// ── Clock ──────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleTimeString('en-US', {hour12: false});
+  document.getElementById('date-str').textContent =
+    now.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'});
+
+  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  const m = String(Math.floor(elapsed / 60)).padStart(2,'0');
+  const s = String(elapsed % 60).padStart(2,'0');
+  document.getElementById('f-uptime').textContent = `${m}:${s}`;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── WebSocket ──────────────────────────────────────────────────
+function connect() {
+  ws = new WebSocket('ws://localhost:8000/ws');
+
+  ws.onopen = () => {
+    document.getElementById('s-ws').textContent = 'CONNECTED';
+    document.getElementById('s-ws').className = 'sys-val';
+    document.getElementById('conn-status').classList.remove('show');
+    addLog('WebSocket connected');
+    loadMemory();
+  };
+
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    handleMessage(msg);
+  };
+
+  ws.onclose = () => {
+    document.getElementById('s-ws').textContent = 'OFFLINE';
+    document.getElementById('s-ws').className = 'sys-val err';
+    document.getElementById('conn-status').classList.add('show');
+    addLog('Connection lost — retrying...');
+    reconnectTimer = setTimeout(connect, 3000);
+  };
+
+  ws.onerror = () => {
+    addLog('WebSocket error');
+  };
+}
+
+// ── Message handler ────────────────────────────────────────────
+function handleMessage(msg) {
+  switch(msg.type) {
+    case 'state':
+      setState(msg.state);
+      break;
+    case 'message':
+      addMessage(msg.role, msg.text, msg.time);
+      break;
+    case 'memory':
+      updateMemory(msg.facts, msg.tasks);
+      break;
+    case 'status':
+      updateStatus(msg);
+      break;
+  }
+}
+
+// ── State management ───────────────────────────────────────────
+const stateConfig = {
+  sleeping:    { label: 'SLEEPING',    cls: 'sleeping',  wave: false },
+  idle:        { label: 'LISTENING',   cls: 'idle',      wave: false },
+  listening:   { label: 'LISTENING',   cls: 'listening', wave: true  },
+  processing:  { label: 'THINKING',    cls: 'thinking',  wave: false },
+  speaking:    { label: 'SPEAKING',    cls: 'speaking',  wave: true  },
+  interrupted: { label: 'INTERRUPTED', cls: 'listening', wave: true  },
+};
+
+function setState(state) {
+  currentState = state;
+  const cfg = stateConfig[state] || stateConfig.idle;
+  const core = document.getElementById('reactor-core');
+  const label = document.getElementById('state-label');
+  const wave = document.getElementById('waveform');
+
+  core.className = `reactor-core ${cfg.cls}`;
+  label.textContent = cfg.label;
+  label.className = cfg.cls;
+  wave.className = cfg.wave ? 'waveform active' : 'waveform';
+  document.getElementById('f-state').textContent = cfg.label;
+
+  addLog(`State → ${cfg.label}`);
+}
+
+// ── Conversation ───────────────────────────────────────────────
+function addMessage(role, text, time) {
+  const conv = document.getElementById('conversation');
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+  div.innerHTML = `${text}<div class="msg-time">${time || ''}</div>`;
+  conv.appendChild(div);
+  conv.scrollTop = conv.scrollHeight;
+  msgCount++;
+  document.getElementById('f-msgs').textContent = msgCount;
+}
+
+// ── Memory ─────────────────────────────────────────────────────
+async function loadMemory() {
+  try {
+    const r = await fetch('/api/memory');
+    const data = await r.json();
+    updateMemory(data.facts || {}, data.tasks || []);
+  } catch(e) {
+    addLog('Memory load failed');
+  }
+}
+
+function updateMemory(facts, tasks) {
+  const fl = document.getElementById('facts-list');
+  const tl = document.getElementById('tasks-list');
+
+  if (Object.keys(facts).length === 0) {
+    fl.innerHTML = '<div class="no-data">No data stored yet.</div>';
+  } else {
+    fl.innerHTML = Object.entries(facts).map(([k,v]) =>
+      `<div class="fact-row"><span class="fact-key">${k}</span><span class="fact-val">${v}</span></div>`
+    ).join('');
+  }
+
+  if (!tasks || tasks.length === 0) {
+    tl.innerHTML = '<div class="no-data">No pending tasks.</div>';
+  } else {
+    tl.innerHTML = tasks.map(t =>
+      `<div class="task-item">
+        <div class="task-title">${t.title}</div>
+        ${t.due_at ? `<div class="task-due">⏰ ${t.due_at}</div>` : ''}
+      </div>`
+    ).join('');
+  }
+
+  document.getElementById('f-facts').textContent = Object.keys(facts).length;
+  document.getElementById('f-tasks').textContent = (tasks || []).length;
+}
+
+// ── System status ──────────────────────────────────────────────
+function updateStatus(data) {
+  if ('ollama' in data) {
+    const el = document.getElementById('s-ollama');
+    el.textContent = data.ollama ? 'ONLINE' : 'OFFLINE';
+    el.className = data.ollama ? 'sys-val' : 'sys-val err';
+  }
+  if ('memory' in data) {
+    const el = document.getElementById('s-memory');
+    el.textContent = data.memory ? 'ONLINE' : 'OFFLINE';
+    el.className = data.memory ? 'sys-val' : 'sys-val err';
+  }
+}
+
+// ── Activity log ───────────────────────────────────────────────
+function addLog(text) {
+  const log = document.getElementById('activity-log');
+  const now = new Date().toLocaleTimeString('en-US', {hour12:false});
+  const entry = document.createElement('div');
+  entry.className = 'entry';
+  entry.innerHTML = `<span class="ts">${now}</span>${text}`;
+  log.insertBefore(entry, log.firstChild);
+  while (log.children.length > 20) log.removeChild(log.lastChild);
+}
+
+// ── Refresh memory every 30s ───────────────────────────────────
+setInterval(loadMemory, 30000);
+
+// ── Boot then connect ──────────────────────────────────────────
+setTimeout(() => {
+  document.getElementById('boot').style.display = 'none';
+  connect();
+}, 3000);
+</script>
+</body>
+</html>

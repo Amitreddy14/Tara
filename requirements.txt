@@ -1,0 +1,17 @@
+# ── Phase 1: Voice Pipeline ────────────────────────────────────
+pyaudio>=0.2.13           # microphone capture + audio playback
+torch>=2.0.0              # Silero VAD (CPU version is fine)
+torchaudio>=2.0.0         # audio utilities for torch
+numpy>=1.24.0             # PCM ↔ float32 conversion
+faster-whisper>=1.0.0     # local STT (CTranslate2 backend, faster than openai-whisper)
+pyttsx3>=2.90             # offline TTS (Phase 1 default)
+
+# ── Optional: higher-quality TTS ───────────────────────────────
+ elevenlabs>=1.0.0       # uncomment if using ElevenLabs (set TTS_ENGINE="elevenlabs")
+
+# ── Phase 2 (install now, use later) ───────────────────────────
+# ollama                  # local LLM runtime client
+# openai                  # Claude / GPT-4o API fallback
+
+# ── Phase 3 ────────────────────────────────────────────────────
+# chromadb                # episodic vector memory
